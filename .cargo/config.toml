@@ -1,0 +1,22 @@
+[target.xtensa-esp32s3-none-elf]
+runner = "espflash flash --monitor"
+
+[env]
+ESP_LOG="info"
+#Put your SSID and password here
+#SSID = 
+#PASSWORD = 
+NUMBER_OF_CLIENTS= "1"
+# need a clean to be taken into account
+EMBASSY_EXECUTOR_TASK_ARENA_SIZE="65536"
+
+[unstable]
+build-std = ["core" ,"alloc"]
+
+[build]
+rustflags = [
+  "-C", "link-arg=-nostartfiles",
+]
+target = "xtensa-esp32s3-none-elf"
+
+
