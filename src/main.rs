@@ -28,7 +28,6 @@ use esp_wifi::wifi::{
 
 pub mod application_layer;
 pub mod hardware;
-pub mod http_handler;
 use application_layer::response_to_request;
 use hardware::get_runner_controller_stack;
 
