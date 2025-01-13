@@ -10,6 +10,7 @@ static NETWORK_STACK_CELL: static_cell::StaticCell<(
     Stack<'_>,
     Runner<'_, &mut WifiDevice<'_, WifiStaDevice>>,
 )> = static_cell::StaticCell::new();
+
 static ESP_WIFI_CONTROLLER: static_cell::StaticCell<esp_wifi::EspWifiController<'_>> =
     const { static_cell::StaticCell::new() };
 static ESP_WIFI_DEVICE: static_cell::StaticCell<WifiDevice<'_, WifiStaDevice>> =

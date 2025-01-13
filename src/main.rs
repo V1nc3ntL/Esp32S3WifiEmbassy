@@ -15,6 +15,7 @@
 const SSID: &str = env!("SSID");
 const PASSWORD: &str = env!("PASSWORD");
 use core::primitive::str;
+mod configuration;
 use embassy_executor::Spawner;
 use embassy_net::{tcp::TcpSocket, IpListenEndpoint, Runner, Stack};
 use embassy_time::Timer;
@@ -31,35 +32,19 @@ pub mod hardware;
 use application_layer::response_to_request;
 use hardware::get_runner_controller_stack;
 
-const NUMBER_OF_CLIENTS: usize = match usize::from_str_radix(env!("NUMBER_OF_CLIENTS"), 10) {
-    Ok(v) => v,
-    Err(_e) => panic!("Could not retrieve the maximum expected number of clients  "),
-};
-
-const RX_BUFFER_SIZE: usize = 1024;
-const TX_BUFFER_SIZE: usize = 1024;
-type RxBufferType = [u8; RX_BUFFER_SIZE];
-type TxBufferType = [u8; TX_BUFFER_SIZE];
-static HTTP_SOCKETS_CELL: [static_cell::StaticCell<TcpSocket<'static>>; NUMBER_OF_CLIENTS] =
-    [const { static_cell::StaticCell::new() }; NUMBER_OF_CLIENTS];
-static RX_BUFFERS_CELL: [static_cell::StaticCell<RxBufferType>; NUMBER_OF_CLIENTS] =
-    [const { static_cell::StaticCell::new() }; NUMBER_OF_CLIENTS];
-static TX_BUFFERS_CELL: [static_cell::StaticCell<TxBufferType>; NUMBER_OF_CLIENTS] =
-    [const { static_cell::StaticCell::new() }; NUMBER_OF_CLIENTS];
-
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) -> ! {
     let (stack, runner, controller) = get_runner_controller_stack();
     spawner.spawn(net_task(runner)).ok();
     spawner.spawn(connection(controller)).ok();
     spawner.spawn(launch_dhcp(stack)).ok();
-    RX_BUFFERS_CELL
+    configuration::RX_BUFFERS_CELL
         .iter()
-        .zip(TX_BUFFERS_CELL.iter())
-        .zip(HTTP_SOCKETS_CELL.iter())
+        .zip(configuration::TX_BUFFERS_CELL.iter())
+        .zip(configuration::HTTP_SOCKETS_CELL.iter())
         .for_each(|iter| {
-            let rx = iter.0 .0.init_with(|| [0; RX_BUFFER_SIZE]);
-            let tx = iter.0 .1.init_with(|| [0; TX_BUFFER_SIZE]);
+            let rx = iter.0 .0.init_with(|| [0; configuration::RX_BUFFER_SIZE]);
+            let tx = iter.0 .1.init_with(|| [0; configuration::TX_BUFFER_SIZE]);
             let mut socket = TcpSocket::new(*stack, rx, tx);
             socket.set_timeout(Some(embassy_time::Duration::from_secs(10)));
             spawner.spawn(answer_to_http(iter.1.init(socket))).ok();
@@ -105,6 +90,7 @@ async fn connection(mut controller: WifiController<'static>) {
         }
     }
 }
+
 #[embassy_executor::task]
 async fn launch_dhcp(stack: &'static Stack<'static>) {
     loop {
