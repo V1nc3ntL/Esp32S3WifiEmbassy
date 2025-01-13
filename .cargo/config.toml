@@ -4,8 +4,8 @@ runner = "espflash flash --monitor"
 [env]
 ESP_LOG="info"
 #Put your SSID and password here
-#SSID = 
-#PASSWORD = 
+SSID = "ssid"
+PASSWORD = "password"
 NUMBER_OF_CLIENTS= "1"
 # need a clean to be taken into account
 EMBASSY_EXECUTOR_TASK_ARENA_SIZE="65536"
