@@ -29,7 +29,9 @@ use esp_wifi::wifi::{
 
 pub mod application_layer;
 pub mod hardware;
+
 use application_layer::handle_request;
+
 use hardware::get_runner_controller_stack;
 
 #[esp_hal_embassy::main]
@@ -41,7 +43,9 @@ async fn main(spawner: Spawner) -> ! {
 
     spawner.spawn(launch_dhcp(stack)).ok();
 
+
     stack.wait_config_up().await;
+
     configuration::RX_BUFFERS_CELL
         .iter()
         .zip(configuration::TX_BUFFERS_CELL.iter())
