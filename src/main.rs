@@ -29,15 +29,19 @@ use esp_wifi::wifi::{
 
 pub mod application_layer;
 pub mod hardware;
-use application_layer::response_to_request;
+use application_layer::handle_request;
 use hardware::get_runner_controller_stack;
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) -> ! {
     let (stack, runner, controller) = get_runner_controller_stack();
     spawner.spawn(net_task(runner)).ok();
+
     spawner.spawn(connection(controller)).ok();
+
     spawner.spawn(launch_dhcp(stack)).ok();
+
+    stack.wait_config_up().await;
     configuration::RX_BUFFERS_CELL
         .iter()
         .zip(configuration::TX_BUFFERS_CELL.iter())
@@ -45,9 +49,11 @@ async fn main(spawner: Spawner) -> ! {
         .for_each(|iter| {
             let rx = iter.0 .0.init_with(|| [0; configuration::RX_BUFFER_SIZE]);
             let tx = iter.0 .1.init_with(|| [0; configuration::TX_BUFFER_SIZE]);
-            let mut socket = TcpSocket::new(*stack, rx, tx);
-            socket.set_timeout(Some(embassy_time::Duration::from_secs(10)));
-            spawner.spawn(answer_to_http(iter.1.init(socket))).ok();
+            spawner
+                .spawn(answer_to_http(
+                    iter.1.uninit().write(TcpSocket::new(*stack, rx, tx)),
+                ))
+                .ok();
         });
     loop {
         Timer::after(embassy_time::Duration::from_millis(1_000)).await;
@@ -93,6 +99,7 @@ async fn connection(mut controller: WifiController<'static>) {
 
 #[embassy_executor::task]
 async fn launch_dhcp(stack: &'static Stack<'static>) {
+    println!("Launching DHCP");
     loop {
         if stack.is_link_up() {
             break;
@@ -112,9 +119,9 @@ async fn launch_dhcp(stack: &'static Stack<'static>) {
 
 #[embassy_executor::task]
 async fn answer_to_http(socket: &'static mut TcpSocket<'static>) {
-    socket.set_timeout(Some(embassy_time::Duration::from_secs(10)));
+    socket.set_timeout(Some(embassy_time::Duration::from_secs(2)));
     loop {
-        const HTTP_PORT: u16 = 7878;
+        const HTTP_PORT: u16 = 80;
         match socket
             .accept(IpListenEndpoint {
                 addr: None,
@@ -124,25 +131,25 @@ async fn answer_to_http(socket: &'static mut TcpSocket<'static>) {
         {
             Ok(_v) => {
                 let mut buf: [u8; 1024] = [0; 1024];
-                match socket.read(&mut buf).await {
-                    Ok(0) => {
-                        println!("read EOF");
-                        socket.abort();
-                    }
-                    Ok(n) => {
-                        println!("received {} bytes", n);
-                        match response_to_request(socket, &buf, n).await {
-                            Ok(()) => continue,
-                            Err(e) => println!("Error when responding to request: {:?}", e),
-                        };
-                        println!("finished response");
-                        Timer::after(embassy_time::Duration::from_millis(20)).await;
-                        socket.close();
-                    }
-                    Err(e) => {
-                        println!("read error: {:?}", e);
-                    }
-                };
+                loop {
+                    match socket.read(&mut buf).await {
+                        Ok(0) => {
+                            println!("read EOF");
+                            break;
+                        }
+                        Ok(n) => {
+                            println!("received {} bytes", n);
+                            match handle_request(socket, &buf, n).await {
+                                Ok(()) => continue,
+                                Err(e) => println!("Error when responding to request: {:?}", e),
+                            };
+                        }
+                        Err(e) => {
+                            println!("read error: {:?}", e);
+                            break;
+                        }
+                    };
+                }
             }
             Err(e) => {
                 println!("accept error: {:?}", e);
