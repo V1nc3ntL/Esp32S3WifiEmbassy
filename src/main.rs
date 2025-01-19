@@ -1,15 +1,3 @@
-//! Embassy DHCP Example
-//!
-//!
-//! Set SSID and PASSWORD env variable before running this example.
-//!
-//! This gets an ip address via DHCP then performs an HTTP get request to some "random" server
-//!
-//! Because of the huge task-arena size configured this won't work on ESP32-S2
-//! When using USB-SERIAL-JTAG you have to activate the feature `phy-enable-usb` in the esp-wifi crate.
-
-//% FEATURES: embassy embassy-generic-timers esp-wifi esp-wifi/async esp-wifi/embassy-net esp-wifi/wifi-default esp-wifi/wifi esp-wifi/utils
-//% CHIPS: esp32 esp32s2 esp32s3 esp32c2 esp32c3 esp32c6
 #![no_std]
 #![no_main]
 const SSID: &str = env!("SSID");
@@ -116,10 +104,15 @@ async fn launch_dhcp(stack: &'static Stack<'static>) {
         Timer::after(embassy_time::Duration::from_millis(1000)).await;
     }
 }
+const READ_BUFFER_SIZE: usize = 1024;
+static READ_BUFFER: static_cell::StaticCell<[u8; READ_BUFFER_SIZE]> =
+    const { static_cell::StaticCell::new() };
 
 #[embassy_executor::task]
 async fn answer_to_http(socket: &'static mut TcpSocket<'static>) {
-    socket.set_timeout(Some(embassy_time::Duration::from_secs(2)));
+    socket.set_timeout(Some(embassy_time::Duration::from_secs(10)));
+    let buf = READ_BUFFER.init_with(|| [0; READ_BUFFER_SIZE]);
+
     loop {
         const HTTP_PORT: u16 = 80;
         match socket
@@ -129,28 +122,26 @@ async fn answer_to_http(socket: &'static mut TcpSocket<'static>) {
             })
             .await
         {
-            Ok(_v) => {
-                let mut buf: [u8; 1024] = [0; 1024];
-                loop {
-                    match socket.read(&mut buf).await {
-                        Ok(0) => {
-                            println!("read EOF");
-                            break;
-                        }
-                        Ok(n) => {
-                            println!("received {} bytes", n);
-                            match handle_request(socket, &buf, n).await {
-                                Ok(()) => continue,
-                                Err(e) => println!("Error when responding to request: {:?}", e),
-                            };
-                        }
-                        Err(e) => {
-                            println!("read error: {:?}", e);
-                            break;
-                        }
-                    };
-                }
-            }
+            Ok(_v) => loop {
+                match socket.read(buf).await {
+                    Ok(0) => {
+                        println!("read EOF");
+                        break;
+                    }
+                    Ok(n) => {
+                        println!("received {} bytes", n);
+                        let buf_copied: &[u8] = &buf[..n];
+                        match handle_request(socket, buf_copied).await {
+                            Ok(()) => continue,
+                            Err(e) => println!("Error when responding to request: {:?}", e),
+                        };
+                    }
+                    Err(e) => {
+                        println!("read error: {:?}", e);
+                        break;
+                    }
+                };
+            },
             Err(e) => {
                 println!("accept error: {:?}", e);
                 break;

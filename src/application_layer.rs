@@ -1,24 +1,46 @@
 use embassy_net::tcp::TcpSocket;
-use embedded_io::WriteReady;
 use embedded_io_async::Write;
-use esp_println::println;
-use httparse::*;
+use httparse::Status::Complete;
+
+pub const HEADER_BUFFER_SIZE: usize = 128;
+
 pub async fn handle_request(
     socket: &mut TcpSocket<'_>,
     buf: &[u8],
-    _n: usize,
 ) -> core::result::Result<(), embassy_net::tcp::Error> {
-    // let body_idx = match parse_request(buf).await {
-    //     Ok(count) => count,
-    //     // This should return a proper error
-    //     Err(e) => return write_bad_request(socket).await,
-    // };
-    write(
-        socket,
-        b"HTTP/1.1 200 OK\r\n\r\n<html><body><h1>HOLA!</h1></body></html>\r\n",
-    )
-    .await
+    let mut header = [httparse::EMPTY_HEADER; HEADER_BUFFER_SIZE];
+    let mut request = httparse::Request::new(&mut header);
+
+    let body_idx = match request.parse(buf) {
+        Ok(v) => match v {
+            Complete(i) => i,
+            httparse::Status::Partial => 0,
+        },
+        Err(e) => 0,
+    };
+
+    match request.method.is_some() {
+        true => handle_method(socket, request.method.unwrap(), &buf[body_idx..]).await,
+        false => write_bad_request(socket).await,
+    }
 }
+pub async fn handle_method(
+    socket: &mut TcpSocket<'_>,
+    method: &str,
+    body_buf: &[u8],
+) -> core::result::Result<(), embassy_net::tcp::Error> {
+    match method {
+        "GET" => {
+            write(
+                socket,
+                b"HTTP/1.1 200 OK\r\n\r\n<html><body><h1>HOLA!</h1></body></html>\r\n",
+            )
+            .await
+        }
+        _ => Err(embassy_net::tcp::Error::ConnectionReset),
+    }
+}
+
 pub async fn write(
     socket: &mut TcpSocket<'_>,
     buf: &[u8],
@@ -31,10 +53,7 @@ pub async fn write(
             }
             Err(e) => Err(e),
         },
-        Err(e) => {
-            println!("Error while writing");
-            Err(e)
-        }
+        Err(e) => Err(e),
     }
 }
 
@@ -46,16 +65,4 @@ pub async fn write_bad_request(
             b"HTTP/1.1 400 Bad Request\r\n\r\n<html><body><h1>BAD REQUEST!</h1></body></html>\r\n",
         )
         .await
-}
-
-pub async fn parse_request(buf: &[u8]) -> Result<usize> {
-    let mut headers = [httparse::EMPTY_HEADER; 1];
-    let mut req = httparse::Request::new(&mut headers);
-
-    let result = req.parse(buf);
-
-    match result {
-        Ok(count) => Ok(count),
-        Err(e) => Err(e),
-    }
 }
