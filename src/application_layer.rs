@@ -37,6 +37,13 @@ pub async fn handle_method(
             )
             .await
         }
+        "POST" => {
+            write(
+                socket,
+                b"HTTP/1.1 200 OK\r\n\r\n<html><body><h1>POST!</h1></body></html>\r\n",
+            )
+            .await
+        }
         _ => Err(embassy_net::tcp::Error::ConnectionReset),
     }
 }
