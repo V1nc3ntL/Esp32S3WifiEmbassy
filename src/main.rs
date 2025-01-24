@@ -92,7 +92,8 @@ async fn launch_dhcp(stack: &'static Stack<'static>) {
         if stack.is_link_up() {
             break;
         }
-        Timer::after(embassy_time::Duration::from_millis(500)).await;
+        Timer::after(embassy_time::Duration::from_millis(2000)).await;
+        println!("Waiting for Stack");
     }
 
     println!("Waiting to get IP address...");
@@ -123,6 +124,7 @@ async fn answer_to_http(socket: &'static mut TcpSocket<'static>) {
             .await
         {
             Ok(_v) => loop {
+                println!("Accepted");
                 match socket.read(buf).await {
                     Ok(0) => {
                         println!("read EOF");
@@ -144,6 +146,7 @@ async fn answer_to_http(socket: &'static mut TcpSocket<'static>) {
             },
             Err(e) => {
                 println!("accept error: {:?}", e);
+                println!("socket state: {:?}", socket.state());
                 break;
             }
         };
