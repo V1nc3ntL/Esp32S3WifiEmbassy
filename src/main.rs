@@ -51,7 +51,6 @@ async fn main(spawner: Spawner) -> ! {
 #[embassy_executor::task]
 async fn connection(mut controller: WifiController<'static>) {
     println!("start connection task");
-    println!("Device capabilities: {:?}", controller.capabilities());
     if esp_wifi::wifi::wifi_state() == WifiState::StaConnected {
         // wait until we're no longer connected
         controller.wait_for_event(WifiEvent::StaDisconnected).await;
@@ -69,7 +68,6 @@ async fn connection(mut controller: WifiController<'static>) {
         controller.start().unwrap();
         println!("Wifi started!");
     }
-    println!("About to connect...");
 
     loop {
         match controller.connect() {
