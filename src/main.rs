@@ -39,7 +39,7 @@ async fn main(spawner: Spawner) -> ! {
             let tx = iter.0 .1.init_with(|| [0; configuration::TX_BUFFER_SIZE]);
             spawner
                 .spawn(answer_to_http(
-                    iter.1.init_with(||TcpSocket::new(*stack, rx, tx)),
+                    iter.1.init_with(|| TcpSocket::new(*stack, rx, tx)),
                 ))
                 .ok();
         });

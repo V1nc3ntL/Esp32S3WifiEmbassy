@@ -4,9 +4,10 @@ use esp_backtrace as _;
 use esp_hal::{prelude::*, rng::Rng, timer::timg::TimerGroup};
 use esp_wifi::wifi::{WifiController, WifiDevice, WifiStaDevice};
 
-const NUMBER_OF_STACK_RESOURCES :usize = 4;
-static NETWORK_STACK_RESSOURCES_CELL: static_cell::StaticCell<StackResources<NUMBER_OF_STACK_RESOURCES>> =
-    static_cell::StaticCell::new();
+const NUMBER_OF_STACK_RESOURCES: usize = 4;
+static NETWORK_STACK_RESSOURCES_CELL: static_cell::StaticCell<
+    StackResources<NUMBER_OF_STACK_RESOURCES>,
+> = static_cell::StaticCell::new();
 static NETWORK_STACK_CELL: static_cell::StaticCell<(
     Stack<'_>,
     Runner<'_, &mut WifiDevice<'_, WifiStaDevice>>,
@@ -42,9 +43,9 @@ pub fn get_runner_controller_stack() -> (
     esp_hal_embassy::init(timg1_0);
 
     let (wifi_device_tmp, controller) = match esp_wifi::wifi::new_with_mode(
-        ESP_WIFI_CONTROLLER.init_with(||
-            esp_wifi::init(wifi_controller_timer, random_number_generator, radio_clock).unwrap(),
-        ),
+        ESP_WIFI_CONTROLLER.init_with(|| {
+            esp_wifi::init(wifi_controller_timer, random_number_generator, radio_clock).unwrap()
+        }),
         wifi,
         WifiStaDevice,
     ) {
@@ -52,16 +53,19 @@ pub fn get_runner_controller_stack() -> (
         Err(e) => panic!("esp wifi new went wrong : {:?}", e),
     };
     let wifi_device = ESP_WIFI_DEVICE.uninit().write(wifi_device_tmp);
- 
-    let seed = (random_number_generator.random() as u64) << 32 | random_number_generator.random() as u64;
 
-    let (stack, runner) = NETWORK_STACK_CELL.init_with(|| new(
-        wifi_device,
-        embassy_net::Config::dhcpv4(Default::default()),
-        NETWORK_STACK_RESSOURCES_CELL
-            .init_with(|| StackResources::<NUMBER_OF_STACK_RESOURCES>::new()),
-        // TODO : Generate random
-        seed,
-    ));
+    let seed =
+        (random_number_generator.random() as u64) << 32 | random_number_generator.random() as u64;
+
+    let (stack, runner) = NETWORK_STACK_CELL.init_with(|| {
+        new(
+            wifi_device,
+            embassy_net::Config::dhcpv4(Default::default()),
+            NETWORK_STACK_RESSOURCES_CELL
+                .init_with(|| StackResources::<NUMBER_OF_STACK_RESOURCES>::new()),
+            // TODO : Generate random
+            seed,
+        )
+    });
     (stack, runner, controller)
 }
