@@ -34,7 +34,7 @@ pub fn get_runner_controller_stack() -> (
     });
 
     let wifi_controller_timer = TimerGroup::new(peripherals.TIMG0).timer0;
-    let random_number_generator = Rng::new(peripherals.RNG);
+    let mut random_number_generator = Rng::new(peripherals.RNG);
     let radio_clock = peripherals.RADIO_CLK;
     let wifi = peripherals.WIFI;
     let timg1_0 = TimerGroup::new(peripherals.TIMG1).timer0;
@@ -52,6 +52,8 @@ pub fn get_runner_controller_stack() -> (
         Err(e) => panic!("esp wifi new went wrong : {:?}", e),
     };
     let wifi_device = ESP_WIFI_DEVICE.uninit().write(wifi_device_tmp);
+ 
+    let seed = (random_number_generator.random() as u64) << 32 | random_number_generator.random() as u64;
 
     let (stack, runner) = NETWORK_STACK_CELL.uninit().write(new(
         wifi_device,
@@ -59,7 +61,7 @@ pub fn get_runner_controller_stack() -> (
         NETWORK_STACK_RESSOURCES_CELL
             .init_with(|| StackResources::<NUMBER_OF_STACK_RESOURCES>::new()),
         // TODO : Generate random
-        1234,
+        seed,
     ));
     (stack, runner, controller)
 }
