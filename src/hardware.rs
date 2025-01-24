@@ -42,7 +42,7 @@ pub fn get_runner_controller_stack() -> (
     esp_hal_embassy::init(timg1_0);
 
     let (wifi_device_tmp, controller) = match esp_wifi::wifi::new_with_mode(
-        ESP_WIFI_CONTROLLER.uninit().write(
+        ESP_WIFI_CONTROLLER.init_with(||
             esp_wifi::init(wifi_controller_timer, random_number_generator, radio_clock).unwrap(),
         ),
         wifi,
@@ -55,7 +55,7 @@ pub fn get_runner_controller_stack() -> (
  
     let seed = (random_number_generator.random() as u64) << 32 | random_number_generator.random() as u64;
 
-    let (stack, runner) = NETWORK_STACK_CELL.uninit().write(new(
+    let (stack, runner) = NETWORK_STACK_CELL.init_with(|| new(
         wifi_device,
         embassy_net::Config::dhcpv4(Default::default()),
         NETWORK_STACK_RESSOURCES_CELL
