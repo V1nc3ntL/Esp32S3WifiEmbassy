@@ -4,7 +4,8 @@ use esp_backtrace as _;
 use esp_hal::{prelude::*, rng::Rng, timer::timg::TimerGroup};
 use esp_wifi::wifi::{WifiController, WifiDevice, WifiStaDevice};
 
-static NETWORK_STACK_RESSOURCES_CELL: static_cell::StaticCell<StackResources<3>> =
+const NUMBER_OF_STACK_RESOURCES :usize = 4;
+static NETWORK_STACK_RESSOURCES_CELL: static_cell::StaticCell<StackResources<NUMBER_OF_STACK_RESOURCES>> =
     static_cell::StaticCell::new();
 static NETWORK_STACK_CELL: static_cell::StaticCell<(
     Stack<'_>,
@@ -56,8 +57,7 @@ pub fn get_runner_controller_stack() -> (
         wifi_device,
         embassy_net::Config::dhcpv4(Default::default()),
         NETWORK_STACK_RESSOURCES_CELL
-            .uninit()
-            .write(StackResources::<3>::new()),
+            .init_with(|| StackResources::<NUMBER_OF_STACK_RESOURCES>::new()),
         // TODO : Generate random
         1234,
     ));
