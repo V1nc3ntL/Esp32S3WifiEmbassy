@@ -2,12 +2,12 @@ use embassy_net::tcp::TcpSocket;
 use embedded_io_async::Write;
 use httparse::Status::Complete;
 
-pub const HEADER_BUFFER_SIZE: usize = 128;
 
 pub async fn handle_request(
     socket: &mut TcpSocket<'_>,
     buf: &[u8],
 ) -> core::result::Result<(), embassy_net::tcp::Error> {
+    const HEADER_BUFFER_SIZE: usize = 128;
     let mut header = [httparse::EMPTY_HEADER; HEADER_BUFFER_SIZE];
     let mut request = httparse::Request::new(&mut header);
 
