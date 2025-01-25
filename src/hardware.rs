@@ -62,7 +62,7 @@ pub fn get_runner_controller_stack() -> (
             wifi_device,
             embassy_net::Config::dhcpv4(Default::default()),
             NETWORK_STACK_RESSOURCES_CELL
-                .init_with(|| StackResources::<NUMBER_OF_STACK_RESOURCES>::new()),
+                .init_with(StackResources::<NUMBER_OF_STACK_RESOURCES>::new),
             // TODO : Generate random
             seed,
         )
