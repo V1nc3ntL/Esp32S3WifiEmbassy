@@ -77,13 +77,3 @@ pub async fn write(
         Err(_e) => Err(ApplicationError::SocketError),
     }
 }
-
-pub async fn write_bad_request(
-    socket: &mut TcpSocket<'_>,
-) -> core::result::Result<(), embassy_net::tcp::Error> {
-    socket
-        .write_all(
-            b"HTTP/1.1 400 Bad Request\r\n\r\n<html><body><h1>BAD REQUEST!</h1></body></html>\r\n",
-        )
-        .await
-}
