@@ -2,11 +2,20 @@ use embassy_net::tcp::TcpSocket;
 use embedded_io_async::Write;
 use httparse::Status::Complete;
 
+#[derive(Debug, Clone)]
+pub enum ApplicationError {
+    MethodUnknown,
+    RequestParsing,
+    RequestUnkown,
+    RequestHandling,
+    RequestNotImplemented,
+    SocketError,
+}
 
 pub async fn handle_request(
     socket: &mut TcpSocket<'_>,
     buf: &[u8],
-) -> core::result::Result<(), embassy_net::tcp::Error> {
+) -> core::result::Result<(), ApplicationError> {
     const HEADER_BUFFER_SIZE: usize = 128;
     let mut header = [httparse::EMPTY_HEADER; HEADER_BUFFER_SIZE];
     let mut request = httparse::Request::new(&mut header);
@@ -16,19 +25,24 @@ pub async fn handle_request(
             Complete(i) => i,
             httparse::Status::Partial => 0,
         },
-        Err(e) => 0,
+        Err(_e) => return Err(ApplicationError::RequestParsing),
     };
 
     match request.method.is_some() {
         true => handle_method(socket, request.method.unwrap(), &buf[body_idx..]).await,
-        false => write_bad_request(socket).await,
+
+        false => write(
+            socket,
+            b"HTTP/1.1 400 Bad Request\r\n\r\n<html><body><h1>BAD REQUEST!</h1></body></html>\r\n",
+        )
+        .await,
     }
 }
 pub async fn handle_method(
     socket: &mut TcpSocket<'_>,
     method: &str,
-    body_buf: &[u8],
-) -> core::result::Result<(), embassy_net::tcp::Error> {
+    _body_buf: &[u8],
+) -> core::result::Result<(), ApplicationError> {
     match method {
         "GET" => {
             write(
@@ -44,23 +58,23 @@ pub async fn handle_method(
             )
             .await
         }
-        _ => Err(embassy_net::tcp::Error::ConnectionReset),
+        _ => Err(ApplicationError::RequestNotImplemented),
     }
 }
 
 pub async fn write(
     socket: &mut TcpSocket<'_>,
     buf: &[u8],
-) -> core::result::Result<(), embassy_net::tcp::Error> {
+) -> core::result::Result<(), ApplicationError> {
     match socket.write_all(buf).await {
         Ok(()) => match socket.flush().await {
             Ok(()) => {
                 socket.close();
                 Ok(())
             }
-            Err(e) => Err(e),
+            Err(_e) => Err(ApplicationError::SocketError),
         },
-        Err(e) => Err(e),
+        Err(_e) => Err(ApplicationError::SocketError),
     }
 }
 
