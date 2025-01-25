@@ -33,7 +33,7 @@ pub async fn handle_request(
 
         false => write(
             socket,
-            b"HTTP/1.1 400 Bad Request\r\n\r\n<html><body><h1>BAD REQUEST!</h1></body></html>\r\n",
+            concat_bytes!( b"HTTP/1.1", b" 400 Bad Request\r\n\r\n<html><body><h1>BAD REQUEST!</h1></body></html>\r\n"),
         )
         .await,
     }
@@ -47,14 +47,14 @@ pub async fn handle_method(
         "GET" => {
             write(
                 socket,
-                b"HTTP/1.1 200 OK\r\n\r\n<html><body><h1>HOLA!</h1></body></html>\r\n",
+                concat_bytes!( b"HTTP/1.1", b" 200 OK\r\n\r\n<html><body><h1>HOLA!</h1></body></html>\r\n"),
             )
             .await
         }
         "POST" => {
             write(
                 socket,
-                b"HTTP/1.1 200 OK\r\n\r\n<html><body><h1>POST!</h1></body></html>\r\n",
+                concat_bytes!( b"HTTP/1.1",b" 200 OK\r\n\r\n<html><body><h1>POST!</h1></body></html>\r\n"),
             )
             .await
         }

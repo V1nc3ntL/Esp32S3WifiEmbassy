@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![feature(concat_bytes)]
 const SSID: &str = env!("SSID");
 const PASSWORD: &str = env!("PASSWORD");
 use core::primitive::str;
