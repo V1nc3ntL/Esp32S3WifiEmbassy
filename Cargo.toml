@@ -6,30 +6,25 @@ edition = "2021"
 license = "MIT"
 
 [dependencies]
-esp-backtrace = { version = "0.14.2", features = [
+
+embassy-executor = { version = "0.7.0", features = ["arch-riscv32"]}
+embedded-io-async = "0.6.1"
+embassy-net = { version = "0.6.0", features = ["proto-ipv6", "tcp", "medium-ip", "dhcpv4"] }
+embassy-time = "0.4.0"
+# embassy-time-driver = "0.2.0"
+esp-alloc = "0.6.0"
+esp-backtrace = { version = "0.15.0", features = [
     "esp32s3",
     "exception-handler",
     "panic-handler",
     "println",
 ] }
-esp-println = { version = "0.12.0", features = ["esp32s3", "log"] }
-log = { version = "0.4.22" }
-embedded-io = "0.6.1"
-smoltcp = { version = "0.11.0", features = ["proto-ipv6"] ,default-features = false }
-esp-wifi = { version = "0.11.0", features = [ "esp32s3",  "utils", "wifi"] }
-heapless = { version = "0.8.0", default-features = false }
-esp-hal = { version = "0.22.0", features = ["esp32s3", "xtensa", "__esp_hal_embassy"] }
-esp-hal-embassy = { version = "0.5.0", features = ["esp32s3", "executors","integrated-timers"] }
-embassy-time = "0.3.2"
-embassy-executor = { version = "0.6.3", features = ["arch-riscv32"]}
-embassy-time-driver = "0.1.0"
-embassy-net = { version = "0.5.0", features = ["proto-ipv6", "tcp", "medium-ip", "dhcpv4"] }
-static_cell = { version = "2.1.0", features = ["nightly"] , default-features = false }
-esp-alloc = "0.5.0"
-embedded-io-async = "0.6.1"
-array-init = "2.1.0"
+esp-hal = { version = "0.23.1", features = ["esp32s3", "__esp_hal_embassy"] }
+esp-hal-embassy = { version = "0.6.0", features = ["esp32s3", "executors"] }
+esp-println = { version = "0.13.0", features = ["esp32s3", "log"] }
+esp-wifi = { version = "0.12.0", features = [ "esp32s3",  "utils", "wifi"] }
 httparse = {version = "1.5.1",  features = [],default-features = false }
-byte-strings = {version = "0.3.1", features = ["const-friendly"]}
+static_cell = { version = "2.1.0", features = ["nightly"] , default-features = false }
 
 [profile.dev]
 # Rust debug is too slow.

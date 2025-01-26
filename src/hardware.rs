@@ -1,7 +1,7 @@
 use embassy_net::{new, Runner, Stack, StackResources};
 use esp_alloc as _;
 use esp_backtrace as _;
-use esp_hal::{prelude::*, rng::Rng, timer::timg::TimerGroup};
+use esp_hal::{ rng::Rng, timer::timg::TimerGroup,clock::CpuClock};
 use esp_wifi::wifi::{WifiController, WifiDevice, WifiStaDevice};
 
 const NUMBER_OF_STACK_RESOURCES: usize = 4;
