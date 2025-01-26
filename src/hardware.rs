@@ -1,7 +1,8 @@
+use embassy_net::DhcpConfig;
 use embassy_net::{new, Runner, Stack, StackResources};
 use esp_alloc as _;
 use esp_backtrace as _;
-use esp_hal::{ rng::Rng, timer::timg::TimerGroup,clock::CpuClock};
+use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 use esp_wifi::wifi::{WifiController, WifiDevice, WifiStaDevice};
 
 const NUMBER_OF_STACK_RESOURCES: usize = 4;
@@ -18,11 +19,11 @@ static ESP_WIFI_CONTROLLER: static_cell::StaticCell<esp_wifi::EspWifiController<
 static ESP_WIFI_DEVICE: static_cell::StaticCell<WifiDevice<'_, WifiStaDevice>> =
     const { static_cell::StaticCell::new() };
 
-pub fn get_runner_controller_stack() -> (
+pub fn get_runner_controller_stack() -> Option<(
     &'static Stack<'static>,
     &'static mut Runner<'static, &'static mut WifiDevice<'static, WifiStaDevice>>,
     WifiController<'static>,
-) {
+)> {
     const MINIMAL_HEAP_REQUIRED: usize = 72 * 1024;
     esp_alloc::heap_allocator!(MINIMAL_HEAP_REQUIRED);
 
@@ -50,22 +51,22 @@ pub fn get_runner_controller_stack() -> (
         WifiStaDevice,
     ) {
         Ok(v) => v,
-        Err(e) => panic!("esp wifi new went wrong : {:?}", e),
+        Err(_e) => return None,
     };
     let wifi_device = ESP_WIFI_DEVICE.uninit().write(wifi_device_tmp);
 
     let seed =
-        (random_number_generator.random() as u64) << 32 | random_number_generator.random() as u64;
+        (random_number_generator.random() as u64) << 32 | (random_number_generator.random() as u64);
 
     let (stack, runner) = NETWORK_STACK_CELL.init_with(|| {
         new(
             wifi_device,
-            embassy_net::Config::dhcpv4(Default::default()),
+            embassy_net::Config::dhcpv4(DhcpConfig::default()),
             NETWORK_STACK_RESSOURCES_CELL
                 .init_with(StackResources::<NUMBER_OF_STACK_RESOURCES>::new),
             // TODO : Generate random
             seed,
         )
     });
-    (stack, runner, controller)
+    Some((stack, runner, controller))
 }

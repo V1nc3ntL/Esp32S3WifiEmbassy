@@ -23,12 +23,13 @@ use hardware::get_runner_controller_stack;
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) -> ! {
-    let (stack, runner, controller) = get_runner_controller_stack();
+    // TODO : actually handle the None case
+    let (stack, runner, controller) = get_runner_controller_stack().unwrap();
     spawner.spawn(net_task(runner)).ok();
 
     spawner.spawn(connection(controller)).ok();
 
-    spawner.spawn(launch_dhcp(stack)).ok();
+    spawner.spawn(launch_dhcp(*stack)).ok();
 
     stack.wait_config_up().await;
     configuration::RX_BUFFERS_CELL
@@ -55,7 +56,7 @@ async fn connection(mut controller: WifiController<'static>) {
     if esp_wifi::wifi::wifi_state() == WifiState::StaConnected {
         // wait until we're no longer connected
         controller.wait_for_event(WifiEvent::StaDisconnected).await;
-        Timer::after(embassy_time::Duration::from_millis(5000)).await
+        Timer::after(embassy_time::Duration::from_millis(5000)).await;
     }
 
     if !matches!(controller.is_started(), Ok(true)) {
@@ -64,28 +65,36 @@ async fn connection(mut controller: WifiController<'static>) {
             password: PASSWORD.try_into().unwrap(),
             ..Default::default()
         });
-        controller.set_configuration(&client_config).unwrap();
-        println!("Starting wifi");
-        controller.start().unwrap();
-        println!("Wifi started!");
+        if let Ok(()) = controller.set_configuration(&client_config) {
+            println!("Configuring wifi")
+        } else {
+            println!("Could not set wifi configuration");
+            return;
+        };
+        if let Ok(()) = controller.start() {
+            println!("Wifi started")
+        } else {
+            println!("Could not start wifi");
+            return;
+        };
     }
 
     loop {
         match controller.connect() {
-            Ok(_) => {
+            Ok(()) => {
                 println!("Wifi connected!");
                 break;
             }
             Err(e) => {
                 println!("Failed to connect to wifi: {e:?}");
-                Timer::after(embassy_time::Duration::from_millis(1000)).await
+                Timer::after(embassy_time::Duration::from_millis(1000)).await;
             }
         }
     }
 }
 
 #[embassy_executor::task]
-async fn launch_dhcp(stack: &'static Stack<'static>) {
+async fn launch_dhcp(stack: Stack<'static>) {
     println!("Launching DHCP");
     loop {
         if stack.is_link_up() {
@@ -104,7 +113,9 @@ async fn launch_dhcp(stack: &'static Stack<'static>) {
         Timer::after(embassy_time::Duration::from_millis(1000)).await;
     }
 }
+/// The size of the buffer to read incoming request
 const READ_BUFFER_SIZE: usize = 1024;
+/// The buffer memory that is used
 static READ_BUFFER: static_cell::StaticCell<[u8; READ_BUFFER_SIZE]> =
     const { static_cell::StaticCell::new() };
 
@@ -131,11 +142,16 @@ async fn answer_to_http(socket: &'static mut TcpSocket<'static>) {
                     }
                     Ok(n) => {
                         println!("received {} bytes", n);
-                        let buf_copied: &[u8] = &buf[..n];
-                        match handle_request(socket, buf_copied).await {
-                            Ok(()) => continue,
-                            Err(e) => println!("Error when responding to request: {:?}", e),
-                        };
+
+                        match &buf.get(..n) {
+                            Some(x) => {
+                                match handle_request(socket, x).await {
+                                    Ok(()) => continue,
+                                    Err(e) => println!("Error when responding to request: {:?}", e),
+                                };
+                            }
+                            None => break,
+                        }
                     }
                     Err(e) => {
                         println!("read error: {:?}", e);
@@ -156,5 +172,5 @@ async fn answer_to_http(socket: &'static mut TcpSocket<'static>) {
 async fn net_task(
     runner: &'static mut Runner<'static, &'static mut WifiDevice<'static, WifiStaDevice>>,
 ) {
-    runner.run().await
+    runner.run().await;
 }

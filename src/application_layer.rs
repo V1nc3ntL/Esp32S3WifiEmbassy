@@ -28,16 +28,20 @@ pub async fn handle_request(
         Err(_e) => return Err(ApplicationError::RequestParsing),
     };
 
-    match request.method.is_some() {
-        true => handle_method(socket, request.method.unwrap(), &buf[body_idx..]).await,
-
-        false => write(
+    if request.method.is_some() {
+        handle_method(socket, request.method.unwrap(), &buf[body_idx..]).await
+    } else {
+        write(
             socket,
-            concat_bytes!( b"HTTP/1.1", b" 400 Bad Request\r\n\r\n<html><body><h1>BAD REQUEST!</h1></body></html>\r\n"),
+            concat_bytes!(
+                b"HTTP/1.1",
+                b" 400 Bad Request\r\n\r\n<html><body><h1>BAD REQUEST!</h1></body></html>\r\n"
+            ),
         )
-        .await,
+        .await
     }
 }
+
 pub async fn handle_method(
     socket: &mut TcpSocket<'_>,
     method: &str,
@@ -47,14 +51,20 @@ pub async fn handle_method(
         "GET" => {
             write(
                 socket,
-                concat_bytes!( b"HTTP/1.1", b" 200 OK\r\n\r\n<html><body><h1>HOLA!</h1></body></html>\r\n"),
+                concat_bytes!(
+                    b"HTTP/1.1",
+                    b" 200 OK\r\n\r\n<html><body><h1>HOLA!</h1></body></html>\r\n"
+                ),
             )
             .await
         }
         "POST" => {
             write(
                 socket,
-                concat_bytes!( b"HTTP/1.1",b" 200 OK\r\n\r\n<html><body><h1>POST!</h1></body></html>\r\n"),
+                concat_bytes!(
+                    b"HTTP/1.1",
+                    b" 200 OK\r\n\r\n<html><body><h1>POST!</h1></body></html>\r\n"
+                ),
             )
             .await
         }
