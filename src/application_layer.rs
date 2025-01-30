@@ -45,29 +45,11 @@ pub async fn handle_request(
 pub async fn handle_method(
     socket: &mut TcpSocket<'_>,
     method: &str,
-    _body_buf: &[u8],
+    body_buf: &[u8],
 ) -> core::result::Result<(), ApplicationError> {
     match method {
-        "GET" => {
-            write(
-                socket,
-                concat_bytes!(
-                    b"HTTP/1.1",
-                    b" 200 OK\r\n\r\n<html><body><h1>HOLA!</h1></body></html>\r\n"
-                ),
-            )
-            .await
-        }
-        "POST" => {
-            write(
-                socket,
-                concat_bytes!(
-                    b"HTTP/1.1",
-                    b" 200 OK\r\n\r\n<html><body><h1>POST!</h1></body></html>\r\n"
-                ),
-            )
-            .await
-        }
+        "GET" => handle_get(socket, body_buf).await,
+        "POST" => handle_post(socket, body_buf).await,
         _ => Err(ApplicationError::RequestNotImplemented),
     }
 }
@@ -86,4 +68,45 @@ pub async fn write(
         },
         Err(_e) => Err(ApplicationError::SocketError),
     }
+}
+static HEADER_SIZE: usize = 8;
+static HTTP_HEADER: [u8; HEADER_SIZE] = *b"HTTP/1.1";
+
+static OK_CODE: [u8; 7] = *b" 200 OK";
+static START_SEQUENCE: [u8; 4] = *b"\r\n\r\n";
+
+async fn handle_get(
+    socket: &mut TcpSocket<'_>,
+    _body_buf: &[u8],
+) -> core::result::Result<(), ApplicationError> {
+    let mut answer: [u8; 512] = [0; 512];
+    let data: [u8; 41] = *b"<html><body><h1>GET!</h1></body></html>\r\n";
+
+    let (header, after_header) = answer.split_at_mut(HEADER_SIZE);
+    header.copy_from_slice(&HTTP_HEADER);
+    let (answer_code, after_answer_code) = after_header.split_at_mut(7);
+    answer_code.copy_from_slice(&OK_CODE);
+    let (start_sequence, body) = after_answer_code.split_at_mut(4);
+    start_sequence.copy_from_slice(&START_SEQUENCE);
+    body[..41].copy_from_slice(&data);
+
+    write(socket, &answer).await
+}
+
+async fn handle_post(
+    socket: &mut TcpSocket<'_>,
+    _body_buf: &[u8],
+) -> core::result::Result<(), ApplicationError> {
+    let mut answer: [u8; 512] = [0; 512];
+    let data: [u8; 42] = *b"<html><body><h1>POST!</h1></body></html>\r\n";
+
+    let (header, after_header) = answer.split_at_mut(HEADER_SIZE);
+    header.copy_from_slice(&HTTP_HEADER);
+    let (answer_code, after_answer_code) = after_header.split_at_mut(7);
+    answer_code.copy_from_slice(&OK_CODE);
+    let (start_sequence, body) = after_answer_code.split_at_mut(4);
+    start_sequence.copy_from_slice(&START_SEQUENCE);
+    body[..42].copy_from_slice(&data);
+
+    write(socket, &answer).await
 }
