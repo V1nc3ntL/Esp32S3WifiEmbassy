@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
-#![feature(concat_bytes)]
+
+
 const SSID: &str = env!("SSID");
 const PASSWORD: &str = env!("PASSWORD");
 use core::primitive::str;
@@ -25,6 +26,7 @@ use hardware::get_runner_controller_stack;
 async fn main(spawner: Spawner) -> ! {
     // TODO : actually handle the None case
     let (stack, runner, controller) = get_runner_controller_stack().unwrap();
+
     spawner.spawn(net_task(runner)).ok();
 
     spawner.spawn(connection(controller)).ok();
@@ -45,9 +47,36 @@ async fn main(spawner: Spawner) -> ! {
                 ))
                 .ok();
         });
+
     loop {
         Timer::after(embassy_time::Duration::from_millis(1_000)).await;
     }
+}
+
+#[embassy_executor::task]
+async fn web_server_task(spawner: Spawner) {
+    let (stack, runner, controller) = get_runner_controller_stack().unwrap();
+
+    spawner.spawn(net_task(runner)).ok();
+
+    spawner.spawn(connection(controller)).ok();
+
+    spawner.spawn(launch_dhcp(*stack)).ok();
+
+    stack.wait_config_up().await;
+    configuration::RX_BUFFERS_CELL
+        .iter()
+        .zip(configuration::TX_BUFFERS_CELL.iter())
+        .zip(configuration::HTTP_SOCKETS_CELL.iter())
+        .for_each(|iter| {
+            let rx = iter.0 .0.init_with(|| [0; configuration::RX_BUFFER_SIZE]);
+            let tx = iter.0 .1.init_with(|| [0; configuration::TX_BUFFER_SIZE]);
+            spawner
+                .spawn(answer_to_http(
+                    iter.1.init_with(|| TcpSocket::new(*stack, rx, tx)),
+                ))
+                .ok();
+        });
 }
 
 #[embassy_executor::task]
