@@ -1,4 +1,4 @@
-use bincode::{config, Decode, Encode};
+use bincode::{config, Encode};
 
 static HEADER_SIZE: usize = 9;
 static HTTP_HEADER: [u8; HEADER_SIZE] = *b"HTTP/1.1 ";
