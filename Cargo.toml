@@ -23,7 +23,7 @@ esp-hal = { version = "0.23.1", features = ["esp32s3", "__esp_hal_embassy"] }
 esp-hal-embassy = { version = "0.6.0", features = ["esp32s3", "executors"] }
 esp-println = { version = "0.13.0", features = ["esp32s3", "log"] }
 esp-wifi = { version = "0.12.0", features = [ "esp32s3",  "utils", "wifi"] }
-httparse = {version = "1.5.1",  features = [],default-features = false }
+httparse = {version = "1.10.0",  features = [],default-features = false }
 static_cell = { version = "2.1.0", features = ["nightly"] , default-features = false }
 bincode = { version = "2.0.0-rc.3", default-features = false, features = ["derive"] }
 
