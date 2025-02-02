@@ -5,7 +5,7 @@
 const SSID: &str = env!("SSID");
 const PASSWORD: &str = env!("PASSWORD");
 use core::primitive::str;
-mod configuration;
+
 use embassy_executor::Spawner;
 use embassy_net::{tcp::TcpSocket, IpListenEndpoint, Runner, Stack};
 use embassy_time::Timer;
@@ -17,10 +17,17 @@ use esp_wifi::wifi::{
     WifiState,
 };
 
-pub mod application_layer;
-pub mod hardware;
-use application_layer::handle_request;
-use hardware::get_runner_controller_stack;
+mod configuration {
+    pub mod http;
+    pub mod hardware;
+}
+mod execution {
+    pub mod http;
+    pub mod hardware;
+}
+use crate::execution::http::*;
+use crate::execution::hardware::*;
+use crate::configuration::hardware::*;
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) -> ! {
@@ -34,50 +41,35 @@ async fn main(spawner: Spawner) -> ! {
     spawner.spawn(launch_dhcp(*stack)).ok();
 
     stack.wait_config_up().await;
-    configuration::RX_BUFFERS_CELL
+    RX_BUFFERS_CELL
         .iter()
-        .zip(configuration::TX_BUFFERS_CELL.iter())
-        .zip(configuration::HTTP_SOCKETS_CELL.iter())
+        .zip(TX_BUFFERS_CELL.iter())
+        .zip(HTTP_SOCKETS_CELL.iter())
         .for_each(|iter| {
-            let rx = iter.0 .0.init_with(|| [0; configuration::RX_BUFFER_SIZE]);
-            let tx = iter.0 .1.init_with(|| [0; configuration::TX_BUFFER_SIZE]);
+            let rx = iter.0 .0.init_with(|| [0; RX_BUFFER_SIZE]);
+            let tx = iter.0 .1.init_with(|| [0; TX_BUFFER_SIZE]);
             spawner
                 .spawn(answer_to_http(
                     iter.1.init_with(|| TcpSocket::new(*stack, rx, tx)),
                 ))
                 .ok();
         });
-
     loop {
         Timer::after(embassy_time::Duration::from_millis(1_000)).await;
     }
 }
 
-#[embassy_executor::task]
-async fn web_server_task(spawner: Spawner) {
-    let (stack, runner, controller) = get_runner_controller_stack().unwrap();
-
-    spawner.spawn(net_task(runner)).ok();
-
-    spawner.spawn(connection(controller)).ok();
-
-    spawner.spawn(launch_dhcp(*stack)).ok();
-
-    stack.wait_config_up().await;
-    configuration::RX_BUFFERS_CELL
-        .iter()
-        .zip(configuration::TX_BUFFERS_CELL.iter())
-        .zip(configuration::HTTP_SOCKETS_CELL.iter())
-        .for_each(|iter| {
-            let rx = iter.0 .0.init_with(|| [0; configuration::RX_BUFFER_SIZE]);
-            let tx = iter.0 .1.init_with(|| [0; configuration::TX_BUFFER_SIZE]);
-            spawner
-                .spawn(answer_to_http(
-                    iter.1.init_with(|| TcpSocket::new(*stack, rx, tx)),
-                ))
-                .ok();
-        });
+async fn wait_for<F>(check: F, delay_ms: u64, message: &str)
+where
+    F: Fn() -> bool,
+{
+    while !check() {
+        println!("{}", message);
+        Timer::after(embassy_time::Duration::from_millis(delay_ms)).await;
+    }
 }
+
+
 
 #[embassy_executor::task]
 async fn connection(mut controller: WifiController<'static>) {
@@ -94,44 +86,35 @@ async fn connection(mut controller: WifiController<'static>) {
             password: PASSWORD.try_into().unwrap(),
             ..Default::default()
         });
-        if let Ok(()) = controller.set_configuration(&client_config) {
-            println!("Configuring wifi")
-        } else {
-            println!("Could not set wifi configuration");
-            return;
-        };
-        if let Ok(()) = controller.start() {
-            println!("Wifi started")
-        } else {
-            println!("Could not start wifi");
-            return;
-        };
-    }
-
-    loop {
-        match controller.connect() {
-            Ok(()) => {
-                println!("Wifi connected!");
-                break;
+        match controller.set_configuration(&client_config) {
+            Ok(()) => println!("Configuring wifi"),
+            Err(_) => {
+                println!("Could not set wifi configuration");
+                return;
             }
-            Err(e) => {
-                println!("Failed to connect to wifi: {e:?}");
-                Timer::after(embassy_time::Duration::from_millis(1000)).await;
+        }
+        match controller.start() {
+            Ok(()) => println!("Wifi started"),
+            Err(_) => {
+                println!("Could not start wifi");
+                return;
             }
         }
     }
+    while let Err(e) = controller.connect() {
+        println!("Failed to connect to wifi: {e:?}");
+        Timer::after(embassy_time::Duration::from_millis(1000)).await;
+    }
+    println!("Wifi connected!");
 }
+
+
 
 #[embassy_executor::task]
 async fn launch_dhcp(stack: Stack<'static>) {
     println!("Launching DHCP");
-    loop {
-        if stack.is_link_up() {
-            break;
-        }
-        Timer::after(embassy_time::Duration::from_millis(2000)).await;
-        println!("Waiting for Stack");
-    }
+
+    wait_for(|| stack.is_link_up(), 2000, "Waiting for Stack").await;
 
     println!("Waiting to get IP address...");
     loop {
