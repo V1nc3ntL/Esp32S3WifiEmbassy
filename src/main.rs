@@ -167,6 +167,7 @@ async fn answer_to_http(socket: &'static mut TcpSocket<'static>) {
                 match socket.read(buf).await {
                     Ok(0) => {
                         println!("read EOF");
+                        socket.close();
                         break;
                     }
                     Ok(n) => {
