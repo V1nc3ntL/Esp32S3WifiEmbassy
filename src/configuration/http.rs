@@ -12,13 +12,13 @@ pub struct HttpResponse<'a> {
     http_header: &'a [u8],
     response_code: &'a [u8],
     code_comment: &'a [u8],
-    start_sequence: &'a [u8],
+    start_sequence: &'static [u8],
     data: &'a [u8],
 }
 
 impl<'a> HttpResponse<'a> {
     pub fn new(in_data: &'a [u8]) -> Self {
-        Self { 
+        Self {
             http_header: &HTTP_HEADER,
             response_code: &CODE,
             code_comment: &OK_CODE,
