@@ -1,13 +1,13 @@
+use crate::configuration::http::*;
 use embassy_net::tcp::TcpSocket;
 use embedded_io_async::Write;
 use httparse::Status::Complete;
-
-use crate::configuration::http::*;
 
 #[derive(Debug, Clone)]
 pub enum ApplicationError {
     MethodUnknown,
     RequestParsing,
+    RequestPartial,
     RequestUnkown,
     RequestHandling,
     RequestNotImplemented,
@@ -25,7 +25,7 @@ pub async fn handle_request(
     let body_idx = match request.parse(buf) {
         Ok(v) => match v {
             Complete(i) => i,
-            httparse::Status::Partial => 0,
+            httparse::Status::Partial => return Err(ApplicationError::RequestPartial),
         },
         Err(_e) => return Err(ApplicationError::RequestParsing),
     };
