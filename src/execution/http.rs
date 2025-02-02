@@ -35,8 +35,7 @@ pub async fn handle_request(
     } else {
         write(
             socket,
-                b"HTTP/1.1 400 Bad Request\r\n\r\n<html><body><h1>BAD REQUEST!</h1></body></html>\r\n"
-            ,
+            b"HTTP/1.1 400 Bad Request\r\n\r\n<html><body><h1>BAD REQUEST!</h1></body></html>\r\n",
         )
         .await
     }
@@ -70,16 +69,16 @@ pub async fn write(
     }
 }
 
-
 async fn handle_get(
     socket: &mut TcpSocket<'_>,
     _body_buf: &[u8],
 ) -> core::result::Result<(), ApplicationError> {
     let mut answer: [u8; 512] = [0; 512];
-    let data: [u8; 42] = *b"<html><body><h1>GET!</h1></body></html>\r\n";
-    let response  = HttpResponse::new(&data);
+    let data: [u8; 41] = *b"<html><body><h1>GET!</h1></body></html>\r\n";
+    let response = HttpResponseBuilder::new(&data).build();
+
     response.get_bytes(&mut answer);
-    write(socket,&data ).await
+    write(socket, &data).await
 }
 
 async fn handle_post(

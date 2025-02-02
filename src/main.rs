@@ -1,7 +1,6 @@
 #![no_std]
 #![no_main]
 
-
 const SSID: &str = env!("SSID");
 const PASSWORD: &str = env!("PASSWORD");
 use core::primitive::str;
@@ -18,16 +17,16 @@ use esp_wifi::wifi::{
 };
 
 mod configuration {
-    pub mod http;
     pub mod hardware;
+    pub mod http;
 }
 mod execution {
-    pub mod http;
     pub mod hardware;
+    pub mod http;
 }
-use crate::execution::http::*;
-use crate::execution::hardware::*;
 use crate::configuration::hardware::*;
+use crate::execution::hardware::*;
+use crate::execution::http::*;
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) -> ! {
@@ -69,8 +68,6 @@ where
     }
 }
 
-
-
 #[embassy_executor::task]
 async fn connection(mut controller: WifiController<'static>) {
     println!("start connection task");
@@ -107,8 +104,6 @@ async fn connection(mut controller: WifiController<'static>) {
     }
     println!("Wifi connected!");
 }
-
-
 
 #[embassy_executor::task]
 async fn launch_dhcp(stack: Stack<'static>) {

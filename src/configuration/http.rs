@@ -26,10 +26,10 @@ impl<'a> HttpResponse<'a> {
             data: in_data,
         }
     }
-    pub fn get_bytes(self : &Self,buffer : &mut [u8] ){
+    pub fn get_bytes(self: &Self, buffer: &mut [u8]) {
         let config = config::standard();
         bincode::encode_into_slice(self, buffer, config).unwrap();
-        return ;
+        return;
     }
 }
 pub struct HttpResponseBuilder<'a> {
