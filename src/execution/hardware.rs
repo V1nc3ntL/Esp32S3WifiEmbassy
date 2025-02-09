@@ -24,11 +24,14 @@ static ESP_WIFI_CONTROLLER: static_cell::StaticCell<esp_wifi::EspWifiController<
 static ESP_WIFI_DEVICE: static_cell::StaticCell<WifiDevice<'_, WifiStaDevice>> =
     const { static_cell::StaticCell::new() };
 
-pub fn get_runner_controller_stack() -> Option<(
-    &'static Stack<'static>,
-    &'static mut Runner<'static, &'static mut WifiDevice<'static, WifiStaDevice>>,
-    WifiController<'static>,
-)> {
+pub struct Hardware<'a> {
+    pub stack: &'static Stack<'static>,
+    pub runner: &'static mut Runner<'static, &'static mut WifiDevice<'static, WifiStaDevice>>,
+    pub controller: WifiController<'static>,
+    pub pmu: Pmu<'a>,
+}
+
+pub fn get_hardware() -> Option<Hardware<'static>> {
     const MINIMAL_HEAP_REQUIRED: usize = 72 * 1024;
     esp_alloc::heap_allocator!(MINIMAL_HEAP_REQUIRED);
 
@@ -39,6 +42,7 @@ pub fn get_runner_controller_stack() -> Option<(
         config.cpu_clock = CpuClock::max();
         config
     });
+
     // PMU
     let pmu_scl = peripherals.GPIO39;
     let pmu_sda = peripherals.GPIO38;
@@ -49,9 +53,6 @@ pub fn get_runner_controller_stack() -> Option<(
     }
     .with_scl(pmu_scl)
     .with_sda(pmu_sda);
-
-    let mut board_pmu = Pmu::new(pmu_i2c, 0x34);
-    let _ = board_pmu.start_pmu();
 
     // Wifi
     let wifi_controller_timer = TimerGroup::new(peripherals.TIMG0).timer0;
@@ -87,5 +88,10 @@ pub fn get_runner_controller_stack() -> Option<(
             seed,
         )
     });
-    Some((stack, runner, controller))
+    Some(Hardware {
+        stack,
+        runner,
+        controller,
+        pmu: Pmu::new(pmu_i2c, 0x34),
+    })
 }

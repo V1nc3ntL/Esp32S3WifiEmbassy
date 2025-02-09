@@ -36,15 +36,18 @@ use crate::execution::http::*;
 async fn main(spawner: Spawner) -> ! {
     // TODO : actually handle the None case
 
-    let (stack, runner, controller) = get_runner_controller_stack().unwrap();
+    let mut hardware = get_hardware().unwrap();
 
-    spawner.spawn(net_task(runner)).ok();
+    let _ = hardware.pmu.start_pmu().unwrap();
 
-    spawner.spawn(connection(controller)).ok();
+    spawner.spawn(net_task(hardware.runner)).ok();
 
-    spawner.spawn(launch_dhcp(*stack)).ok();
+    spawner.spawn(connection(hardware.controller)).ok();
 
-    stack.wait_config_up().await;
+    spawner.spawn(launch_dhcp(*hardware.stack)).ok();
+
+    hardware.stack.wait_config_up().await;
+
     RX_BUFFERS_CELL
         .iter()
         .zip(TX_BUFFERS_CELL.iter())
@@ -54,7 +57,7 @@ async fn main(spawner: Spawner) -> ! {
             let tx = iter.0 .1.init_with(|| [0; TX_BUFFER_SIZE]);
             spawner
                 .spawn(answer_to_http(
-                    iter.1.init_with(|| TcpSocket::new(*stack, rx, tx)),
+                    iter.1.init_with(|| TcpSocket::new(*hardware.stack, rx, tx)),
                 ))
                 .ok();
         });
