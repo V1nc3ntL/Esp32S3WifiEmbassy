@@ -24,9 +24,6 @@ mod execution {
     pub mod hardware;
     pub mod http;
 }
-mod peripherals {
-    pub mod pmu;
-}
 
 use crate::configuration::hardware::*;
 use crate::execution::hardware::*;
@@ -36,7 +33,7 @@ use crate::execution::http::*;
 async fn main(spawner: Spawner) -> ! {
     // TODO : actually handle the None case
 
-    let mut hardware = get_hardware().unwrap();
+    let mut hardware = get_hardware();
 
     let _ = hardware.pmu.start_pmu().unwrap();
 

@@ -1,0 +1,3 @@
+[submodule "xpowers_axp2101"]
+	path = xpowers_axp2101
+	url = .\\xpowers_axp2101\\

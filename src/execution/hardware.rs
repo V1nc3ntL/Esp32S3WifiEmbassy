@@ -8,7 +8,7 @@ use esp_hal::Blocking;
 use esp_hal::{clock::CpuClock, i2c::master::*, rng::Rng, timer::timg::TimerGroup};
 use esp_wifi::wifi::{WifiController, WifiDevice, WifiStaDevice};
 
-use crate::peripherals::pmu::*;
+use xpowers_axp2101::Pmu;
 
 const NUMBER_OF_STACK_RESOURCES: usize = 4;
 static NETWORK_STACK_RESSOURCES_CELL: static_cell::StaticCell<
@@ -28,10 +28,10 @@ pub struct Hardware<'a> {
     pub stack: &'static Stack<'static>,
     pub runner: &'static mut Runner<'static, &'static mut WifiDevice<'static, WifiStaDevice>>,
     pub controller: WifiController<'static>,
-    pub pmu: Pmu<'a>,
+    pub pmu: Pmu<I2c<'a,Blocking>>,
 }
 
-pub fn get_hardware() -> Option<Hardware<'static>> {
+pub fn get_hardware() -> Hardware<'static> {
     const MINIMAL_HEAP_REQUIRED: usize = 72 * 1024;
     esp_alloc::heap_allocator!(MINIMAL_HEAP_REQUIRED);
 
@@ -71,7 +71,7 @@ pub fn get_hardware() -> Option<Hardware<'static>> {
         WifiStaDevice,
     ) {
         Ok(v) => v,
-        Err(_e) => return None,
+        Err(_e) => panic!("Could not retrieve a wifi device"),
     };
     let wifi_device = ESP_WIFI_DEVICE.uninit().write(wifi_device_tmp);
 
@@ -88,10 +88,10 @@ pub fn get_hardware() -> Option<Hardware<'static>> {
             seed,
         )
     });
-    Some(Hardware {
+    Hardware {
         stack,
         runner,
         controller,
         pmu: Pmu::new(pmu_i2c, 0x34),
-    })
+    }
 }
