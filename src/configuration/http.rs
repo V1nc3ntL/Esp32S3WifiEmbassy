@@ -26,10 +26,9 @@ impl<'a> HttpResponse<'a> {
             data: in_data,
         }
     }
-    pub fn get_bytes(self: &Self, buffer: &mut [u8]) {
+    pub fn get_bytes(&self, buffer: &mut [u8]) {
         let config = config::standard();
         bincode::encode_into_slice(self, buffer, config).unwrap();
-        return;
     }
 }
 pub struct HttpResponseBuilder<'a> {
@@ -50,21 +49,21 @@ impl<'a> HttpResponseBuilder<'a> {
             data: in_data,
         }
     }
-    pub fn header(mut self, header: &'a [u8]) -> HttpResponseBuilder {
+    pub fn header(mut self, header: &'a [u8]) -> HttpResponseBuilder<'a> {
         self.http_header = header;
         self
     }
-    pub fn code(mut self, code: &'a [u8]) -> HttpResponseBuilder {
+    pub fn code(mut self, code: &'a [u8]) -> HttpResponseBuilder<'a> {
         self.response_code = code;
         self
     }
-    pub fn code_comment(mut self, code_comment: &'a [u8]) -> HttpResponseBuilder {
+    pub fn code_comment(mut self, code_comment: &'a [u8]) -> HttpResponseBuilder<'a> {
         {
             self.code_comment = code_comment;
             self
         }
     }
-    pub fn data(mut self, data: &'a [u8]) -> HttpResponseBuilder {
+    pub fn data(mut self, data: &'a [u8]) -> HttpResponseBuilder<'a> {
         {
             self.data = data;
             self

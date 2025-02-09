@@ -1,9 +1,14 @@
+use core::panic;
+
 use embassy_net::DhcpConfig;
 use embassy_net::{new, Runner, Stack, StackResources};
 use esp_alloc as _;
 use esp_backtrace as _;
-use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
+use esp_hal::Blocking;
+use esp_hal::{clock::CpuClock, i2c::master::*, rng::Rng, timer::timg::TimerGroup};
 use esp_wifi::wifi::{WifiController, WifiDevice, WifiStaDevice};
+
+use crate::peripherals::pmu::*;
 
 const NUMBER_OF_STACK_RESOURCES: usize = 4;
 static NETWORK_STACK_RESSOURCES_CELL: static_cell::StaticCell<
@@ -34,7 +39,21 @@ pub fn get_runner_controller_stack() -> Option<(
         config.cpu_clock = CpuClock::max();
         config
     });
+    // PMU
+    let pmu_scl = peripherals.GPIO39;
+    let pmu_sda = peripherals.GPIO38;
+    let config = esp_hal::i2c::master::Config::default();
+    let pmu_i2c = match I2c::<Blocking>::new(peripherals.I2C0, config) {
+        Ok(v) => v,
+        _ => panic!(),
+    }
+    .with_scl(pmu_scl)
+    .with_sda(pmu_sda);
 
+    let mut board_pmu = Pmu::new(pmu_i2c, 0x34);
+    let _ = board_pmu.start_pmu();
+
+    // Wifi
     let wifi_controller_timer = TimerGroup::new(peripherals.TIMG0).timer0;
     let mut random_number_generator = Rng::new(peripherals.RNG);
     let radio_clock = peripherals.RADIO_CLK;

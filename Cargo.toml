@@ -19,6 +19,7 @@ esp-backtrace = { version = "0.15.0", features = [
     "panic-handler",
     "println",
 ] }
+
 esp-hal = { version = "0.23.1", features = ["esp32s3", "__esp_hal_embassy"] }
 esp-hal-embassy = { version = "0.6.0", features = ["esp32s3", "executors"] }
 esp-println = { version = "0.13.0", features = ["esp32s3", "log"] }

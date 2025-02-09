@@ -24,6 +24,10 @@ mod execution {
     pub mod hardware;
     pub mod http;
 }
+mod peripherals {
+    pub mod pmu;
+}
+
 use crate::configuration::hardware::*;
 use crate::execution::hardware::*;
 use crate::execution::http::*;
@@ -31,6 +35,7 @@ use crate::execution::http::*;
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) -> ! {
     // TODO : actually handle the None case
+
     let (stack, runner, controller) = get_runner_controller_stack().unwrap();
 
     spawner.spawn(net_task(runner)).ok();
